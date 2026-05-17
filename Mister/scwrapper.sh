@@ -29,28 +29,28 @@ DOWNLOAD_URL=https://github.com/bnpfeife/scwrapper/releases/download/latest/scwr
 function install() {
 
     if [[ ! -f "${CA_CERTS}" ]] ; then
-	echo 'Could not locate CA certificates. '
-	read -p 'Continue with insecure download (y/n): ' option
+        echo 'Could not locate CA certificates. '
+        read -r -p 'Continue with insecure download (y/n): ' option
 
-	if [[ "${option}" == y ]] ; then
-	    curl --insecure "${DONWLOAD_URL}" | tar -xzvf - -C /
+        if [[ "${option}" == y ]] ; then
+            curl --insecure "${DOWNLOAD_URL}" | tar -xzvf - -C /
         else
-	    exit 1
-	fi
+            exit 1
+        fi
     else
         curl --cacert /etc/ssl/certs/cacert.pem -fL "${DOWNLOAD_URL}" | tar -xzvf - -C /
     fi
 
-    read -n 1 -s -p 'Press any key to reboot...'
+    read -r -n 1 -s -p 'Press any key to reboot...'
     reboot -f
 }
 
 function uninstall() {
    rm -vf /etc/init.d/S99scwrapper              \
-	  /etc/udev/rules.d/99-disable-sc.rules \
-	  /usr/bin/scwrapper
+          /etc/udev/rules.d/99-disable-sc.rules \
+          /usr/bin/scwrapper
 
-    read -n 1 -s -p 'Press any key to reboot...'
+    read -r -n 1 -s -p 'Press any key to reboot...'
     reboot -f
 }
 
@@ -68,7 +68,7 @@ Please select one of the following options:
   u) uninstall
 EOF
 
-read -p '> ' option
+read -r -p '> ' option
 
 case "${option}" in
     i) install   ;;
