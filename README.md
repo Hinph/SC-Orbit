@@ -27,7 +27,7 @@ db_url = https://raw.githubusercontent.com/bnpfeife/scwrapper/db/db.json.zip
 ```
 
 2. Then run `update` or `update_all`
-3. Or download [scwrapper.sh](https://raw.githubusercontent.com/bnpfeife/scwrapper/refs/heads/main/Mister/scwrapper.sh) and place it in the MisterFPGA's `Scripts` directory.
+3. Or download [scwrapper.sh](https://raw.githubusercontent.com/bnpfeife/scwrapper/refs/heads/main/Scripts/scwrapper.sh) and place it in the MisterFPGA's `Scripts` directory.
 4. Boot up the MisterFGPA with a keyboard attached, and run the `scwrapper.sh` script.
 5. Follow the prompts.
 6. Plug in your Steam Controller (or Puck) after the MisterFGPA reboots.
