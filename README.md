@@ -18,13 +18,23 @@ SCWrapper is a Linux application that translates inputs from the 2026 version of
 - Touchpad Haptics Support (?)
 
 ## MisterFPGA / MisterPi Installation Guide
-1. Download [scwrapper.sh](https://raw.githubusercontent.com/bnpfeife/scwrapper/refs/heads/main/Mister/scwrapper.sh) and place it in the MisterFPGA's Scripts directory.
-2. Boot up the MisterFGPA with a keyboard attached, and run the scwrapper.sh script.
-3. Follow the prompts.
-4. Plug in your Steam Controller (or Puck) after the MisterFGPA reboots.
-5. Enjoy! (Please report any issues or bugs you encounter!)
+
+1. Add the following to `/media/fat.downloader.ini`:
+
+```ini
+[bnpfeife/scwrapper]
+db_url = https://raw.githubusercontent.com/bnpfeife/scwrapper/db/db.json.zip
+```
+
+2. Then run `update` or `update_all`
+3. Or download [scwrapper.sh](https://raw.githubusercontent.com/bnpfeife/scwrapper/refs/heads/main/Mister/scwrapper.sh) and place it in the MisterFPGA's `Scripts` directory.
+4. Boot up the MisterFGPA with a keyboard attached, and run the `scwrapper.sh` script.
+5. Follow the prompts.
+6. Plug in your Steam Controller (or Puck) after the MisterFGPA reboots.
+7. Enjoy! (Please report any issues or bugs you encounter!)
 
 ## Linux Installation Guide
+
 1. Download the [udev rules](https://raw.githubusercontent.com/bnpfeife/scwrapper/refs/heads/main/Linux/files/99-disable-sc.rules) and place it in the `/etc/udev/rules.d` directory.
 2. Reboot or run these commands:
 ```
