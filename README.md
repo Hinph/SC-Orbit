@@ -15,7 +15,7 @@ SCWrapper is a Linux application that translates inputs from the 2026 version of
 - Rumble Support
 - Gyro Support
 - Alternative Touchpad Configurations
-- Touchpad Haptics Support (?)
+- Haptics Support (?)
 
 ## MisterFPGA / MisterPi Installation Guide
 1. Download [scwrapper.sh](https://raw.githubusercontent.com/bnpfeife/scwrapper/refs/heads/main/Mister/scwrapper.sh) and place it in the MisterFPGA's Scripts directory.
