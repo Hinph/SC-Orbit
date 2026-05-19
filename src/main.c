@@ -6,14 +6,15 @@
 #include <string.h>
 #include <sys/epoll.h>
 #include <sys/inotify.h>
-#include <time.h>
 #include <unistd.h>
 #include <errno.h>
-
 #include <linux/hidraw.h>
-#include <linux/uinput.h>
 
-int safe_strcpy(char* const dst, char const* const src, size_t count) {
+#include "virtual_gamepad.h"
+#include "virtual_mouse.h"
+#include "sc_gamepad_state.h"
+
+static int safe_strcpy(char* const dst, char const* const src, size_t count) {
     if ((count == 0) || (count <= strlen(src))) {
         return 1;
     }
@@ -23,353 +24,14 @@ int safe_strcpy(char* const dst, char const* const src, size_t count) {
     return 0;
 }
 
-#ifndef BTN_GRIPL
-#define BTN_GRIPL BTN_0
-#endif
-
-#ifndef BTN_GRIPR
-#define BTN_GRIPR BTN_1
-#endif
-
-#ifndef BTN_GRIPL2
-#define BTN_GRIPL2 BTN_2
-#endif
-
-#ifndef BTN_GRIPR2
-#define BTN_GRIPR2 BTN_3
-#endif
-
-// steam controller
-struct sc_gamepad_state {
-    bool    btn_south;        // a
-    bool    btn_east;         // b
-    bool    btn_west;         // x
-    bool    btn_north;        // y
-    bool    btn_dpad_left;    // dpad left
-    bool    btn_dpad_up;      // dpad up
-    bool    btn_dpad_down;    // dpad down
-    bool    btn_dpad_right;   // dpad right
-    bool    btn_tl;           // l1
-    bool    btn_tr;           // r1
-    bool    btn_tl2;          // l2 (full press)
-    bool    btn_tr2;          // r2 (full press)
-    bool    btn_thumbl;       // l3
-    bool    btn_thumbr;       // r3
-    bool    btn_gripl;        // l4
-    bool    btn_gripr;        // r4
-    bool    btn_gripl2;       // l5
-    bool    btn_gripr2;       // r5
-    bool    btn_thumb;        // touchpad-l click
-    bool    btn_thumb2;       // touchpad-r click
-    bool    btn_base;         // quick
-    bool    btn_start;        // menu
-    bool    btn_select;       // view
-    bool    btn_mode;         // steam
-    int16_t   abs_x;          // thumbstick-l x-axis
-    int16_t   abs_y;          // thumbstick-l y-axis
-    int16_t   abs_rx;         // thumbstick-r x-axis
-    int16_t   abs_ry;         // thumbstick-r y-axis
-    int16_t   abs_z;          // l2
-    int16_t   abs_rz;         // r2
-    int16_t   abs_hat1x;      // touchpad-l x-axis
-    int16_t   abs_hat1y;      // touchpad-l y-axis
-    int16_t   abs_hat2x;      // touchpad-r x-axis
-    int16_t   abs_hat2y;      // touchpad-r y-axis
-    int8_t    mouse_l;        // mouse l click (unmapped)
-    int8_t    mouse_r;        // mouse r click (unmapped)
-    int8_t    mouse_rel_x;    // mouse relative x (unmapped)
-    int8_t    mouse_rel_y;    // mouse relative y (unmapped)
-    int8_t    mouse_wheel_x;  // mouse wheel x (unmapped)
-    int8_t    mouse_wheel_y;  // mouse wheel y (unmapped)
-};
-
-void sc_gamepad_state_update(struct sc_gamepad_state* const gamepad, uint8_t const* const buffer) {
-    // Report ID (64)
-    if (buffer[0] == 64) {
-        gamepad->mouse_l       = buffer[1] & 0x1; // mouse l click
-        gamepad->mouse_r       = buffer[1] & 0x2; // mouse r click
-        gamepad->mouse_rel_x   = buffer[2];       // mouse relative x
-        gamepad->mouse_rel_y   = buffer[3];       // mouse relative y
-        gamepad->mouse_wheel_y = buffer[4];       // mouse wheel x
-        gamepad->mouse_wheel_x = buffer[5];       // mouse wheel y
-    }
-    // Report ID (66)
-    if (buffer[0] == 66) {
-        gamepad->btn_south      = buffer[2] & 0x01;             // a
-        gamepad->btn_east       = buffer[2] & 0x02;             // b
-        gamepad->btn_west       = buffer[2] & 0x04;             // x
-        gamepad->btn_north      = buffer[2] & 0x08;             // y
-        gamepad->btn_dpad_left  = buffer[3] & 0x10;             // dpad left
-        gamepad->btn_dpad_up    = buffer[3] & 0x20;             // dpad up
-        gamepad->btn_dpad_down  = buffer[3] & 0x04;             // dpad down
-        gamepad->btn_dpad_right = buffer[3] & 0x08;             // dpad right
-        gamepad->btn_tl         = buffer[4] & 0x08;             // l1
-        gamepad->btn_tr         = buffer[3] & 0x02;             // r1
-        gamepad->btn_tl2        = buffer[5] & 0x08;             // l2
-        gamepad->btn_tr2        = buffer[4] & 0x80;             // r2
-        gamepad->btn_thumbl     = buffer[3] & 0x80;             // l3
-        gamepad->btn_thumbr     = buffer[2] & 0x20;             // r3
-        gamepad->btn_gripl      = buffer[4] & 0x02;             // l4
-        gamepad->btn_gripr      = buffer[2] & 0x80;             // r4
-        gamepad->btn_gripl2     = buffer[4] & 0x04;             // l5
-        gamepad->btn_gripr2     = buffer[3] & 0x01;             // r5
-        gamepad->btn_thumb      = buffer[5] & 0x04;             // touchpad-l click
-        gamepad->btn_thumb2     = buffer[4] & 0x40;             // touchpad-r click
-        gamepad->btn_base       = buffer[2] & 0x10;             // quick
-        gamepad->btn_start      = buffer[2] & 0x40;             // menu
-        gamepad->btn_select     = buffer[3] & 0x40;             // view
-        gamepad->btn_mode       = buffer[4] & 0x01;             // steam
-        gamepad->abs_x          = buffer[10] | buffer[11] << 8; // thumbstick-l x-axis
-        gamepad->abs_y          = buffer[12] | buffer[13] << 8; // thumbstick-l y-axis
-        gamepad->abs_rx         = buffer[14] | buffer[15] << 8; // thumbstick-r x-axis
-        gamepad->abs_ry         = buffer[16] | buffer[17] << 8; // thumbstick-r y-axis
-        gamepad->abs_z          = buffer[ 6] | buffer[ 7] << 8; // l2
-        gamepad->abs_rz         = buffer[ 8] | buffer[ 9] << 8; // r2
-        gamepad->abs_hat1x      = buffer[18] | buffer[19] << 8; // touchpad-l x-axis
-        gamepad->abs_hat1y      = buffer[20] | buffer[21] << 8; // touchpad-l y-axis
-        gamepad->abs_hat2x      = buffer[24] | buffer[25] << 8; // touchpad-r x-axis
-        gamepad->abs_hat2y      = buffer[26] | buffer[27] << 8; // touchpad-r y-axis
-    }
-}
-
-void sc_gamepad_state_print(struct sc_gamepad_state const* const gamepad) {
-    printf(
-        "a: %d, "
-        "b: %d, "
-        "x: %d, "
-        "y: %d\n"
-        "dpad left: %d, "
-        "dpad right: %d, "
-        "dpad up: %d, "
-        "dpad down: %d\n"
-        "l1: %d, "
-        "r1: %d, "
-        "l2: %d, "
-        "r2: %d, "
-        "l3: %d, "
-        "r3: %d, "
-        "l4: %d, "
-        "r4: %d, "
-        "l5: %d, "
-        "r5: %d\n"
-        "touchpad-l press: %d, "
-        "touchpad-r press: %d\n"
-        "quick: %d, "
-        "menu: %d, "
-        "view: %d, "
-        "steam: %d\n"
-        "thumbstick-l x: %06d, "
-        "thumbstick-l y: %06d, "
-        "thumbstick-r x: %06d, "
-        "thumbstick-r y: %06d\n"
-        "l2: %06d, "
-        "r2: %06d\n"
-        "touchpad-l x: %06d, "
-        "touchpad-l y: %06d\n"
-        "touchpad-r x: %06d, "
-        "touchpad-r y: %06d\n"
-        "mouse l: %d, "
-        "mouse r: %d, "
-        "mouse rel-x: %03d, "
-        "mouse rel-y: %03d, "
-        "mouse wheel-x: %03d, "
-        "mouse wheel-y: %03d\n"
-        "\n",
-        gamepad->btn_south,
-        gamepad->btn_east,
-        gamepad->btn_west,
-        gamepad->btn_north,
-        gamepad->btn_dpad_left,
-        gamepad->btn_dpad_right,
-        gamepad->btn_dpad_up,
-        gamepad->btn_dpad_down,
-        gamepad->btn_tl,
-        gamepad->btn_tr,
-        gamepad->btn_tl2,
-        gamepad->btn_tr2,
-        gamepad->btn_thumbl,
-        gamepad->btn_thumbr,
-        gamepad->btn_gripl,
-        gamepad->btn_gripr,
-        gamepad->btn_gripl2,
-        gamepad->btn_gripr2,
-        gamepad->btn_thumb,
-        gamepad->btn_thumb2,
-        gamepad->btn_base,
-        gamepad->btn_start,
-        gamepad->btn_select,
-        gamepad->btn_mode,
-        gamepad->abs_x,
-        gamepad->abs_y,
-        gamepad->abs_rx,
-        gamepad->abs_ry,
-        gamepad->abs_z,
-        gamepad->abs_rz,
-        gamepad->abs_hat1x,
-        gamepad->abs_hat1y,
-        gamepad->abs_hat2x,
-        gamepad->abs_hat2y,
-        gamepad->mouse_l,
-        gamepad->mouse_r,
-        gamepad->mouse_rel_x,
-        gamepad->mouse_rel_y,
-        gamepad->mouse_wheel_x,
-        gamepad->mouse_wheel_y
-    );
-}
-
-static int timeval_now(struct timeval* const tv) {
-    struct timespec ts;
-    if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
-        tv->tv_sec  = ts.tv_sec;
-        tv->tv_usec = ts.tv_nsec / 1000;
-        return 0;
-    }
-    return 1;
-}
-
-static int uinput_send(
-    int fd,
-    uint16_t type,
-    uint16_t code,
-    int32_t value
-) {
-    struct input_event event = {
-        .type  = type,
-        .code  = code,
-        .value = value,
-    };
-    if (timeval_now(&event.time)) {
-        return 1;
-    }
-    if (write(fd, &event, sizeof(event)) != sizeof(event)) {
-        return 1;
-    }
-    return 0;
-}
-
-static int uinput_sync(int fd) {
-    struct input_event event = {
-        .type  = EV_SYN,
-        .code  = SYN_REPORT,
-        .value = 0,
-    };
-    if (timeval_now(&event.time)) {
-        return 1;
-    }
-    if (write(fd, &event, sizeof(event)) != sizeof(event)) {
-        return 1;
-    }
-    return 0;
-}
-
-static int send_key(
-    int fd,
-    uint16_t code,
-    int32_t pval,
-    int32_t cval
-) {
-    if (pval != cval) {
-        if (uinput_send(fd, EV_KEY, code, cval)) {
-            return 1;
-        }
-    }
-    return 0;
-}
-
-static int send_abs(
-    int fd,
-    uint16_t code,
-    int16_t pval,
-    int16_t cval,
-    bool negate
-) {
-    if (pval != cval) {
-        if (uinput_send(fd, EV_ABS, code, negate ? -cval : cval)) {
-            return 1;
-        }
-    }
-    return 0;
-}
-
-static int send_keys_as_abs(
-    int fd,
-    uint16_t code,
-    int32_t pval_pole_neg,
-    int32_t pval_pole_pos,
-    int32_t cval_pole_neg,
-    int32_t cval_pole_pos
-) {
-    if ((pval_pole_neg != cval_pole_neg) ||
-        (pval_pole_pos != cval_pole_pos)) {
-        if (uinput_send(fd, EV_ABS, code, cval_pole_pos - cval_pole_neg)) {
-            return 1;
-        }
-    }
-    return 0;
-}
-
-int sc_gamepad_state_send(
-    int uinput_fd,
-    struct sc_gamepad_state const* const prev,
-    struct sc_gamepad_state const* const curr
-) {
-    send_key(uinput_fd, BTN_SOUTH,  prev->btn_south,  curr->btn_south);  // a
-    send_key(uinput_fd, BTN_EAST,   prev->btn_east,   curr->btn_east);   // b
-    send_key(uinput_fd, BTN_NORTH,  prev->btn_west,   curr->btn_west);   // x (swapped with Y)
-    send_key(uinput_fd, BTN_WEST,   prev->btn_north,  curr->btn_north);  // y (swapped with X)
-    send_key(uinput_fd, BTN_TL,     prev->btn_tl,     curr->btn_tl);     // l1
-    send_key(uinput_fd, BTN_TR,     prev->btn_tr,     curr->btn_tr);     // r1
-    send_key(uinput_fd, BTN_TL2,    prev->btn_tl2,    curr->btn_tl2);    // l2 (full press)
-    send_key(uinput_fd, BTN_TR2,    prev->btn_tr2,    curr->btn_tr2);    // r2 (full press)
-    send_key(uinput_fd, BTN_THUMBL, prev->btn_thumbl, curr->btn_thumbl); // l3
-    send_key(uinput_fd, BTN_THUMBR, prev->btn_thumbr, curr->btn_thumbr); // r3
-    send_key(uinput_fd, BTN_GRIPL,  prev->btn_gripl,  curr->btn_gripl);  // l4
-    send_key(uinput_fd, BTN_GRIPR,  prev->btn_gripr,  curr->btn_gripr);  // r4
-    send_key(uinput_fd, BTN_GRIPL2, prev->btn_gripl2, curr->btn_gripl2); // l5
-    send_key(uinput_fd, BTN_GRIPR2, prev->btn_gripr2, curr->btn_gripr2); // r5
-    send_key(uinput_fd, BTN_THUMB,  prev->btn_thumb,  curr->btn_thumb);  // touchpad l-click
-    send_key(uinput_fd, BTN_THUMB2, prev->btn_thumb2, curr->btn_thumb2); // touchpad r-click
-    send_key(uinput_fd, BTN_BASE,   prev->btn_base,   curr->btn_base);   // quick
-    send_key(uinput_fd, BTN_START,  prev->btn_start,  curr->btn_start);  // menu
-    send_key(uinput_fd, BTN_SELECT, prev->btn_select, curr->btn_select); // view
-    send_key(uinput_fd, BTN_MODE,   prev->btn_mode,   curr->btn_mode);   // steam
-    send_abs(uinput_fd, ABS_Z,      prev->abs_z,      curr->abs_z,     false); // l2
-    send_abs(uinput_fd, ABS_RZ,     prev->abs_rz,     curr->abs_rz,    false); // r2
-    send_abs(uinput_fd, ABS_X,      prev->abs_x,      curr->abs_x,     false); // thumbstick-l x-axis
-    send_abs(uinput_fd, ABS_Y,      prev->abs_y,      curr->abs_y,     true);  // thumbstick-l y-axis (negated)
-    send_abs(uinput_fd, ABS_RX,     prev->abs_rx,     curr->abs_rx,    false); // thumbstick-r x-axis
-    send_abs(uinput_fd, ABS_RY,     prev->abs_ry,     curr->abs_ry,    true);  // thumbstick-r y-axis (negated)
-    send_abs(uinput_fd, ABS_HAT1X,  prev->abs_hat1x,  curr->abs_hat1x, false); // touchpad-l x-axis
-    send_abs(uinput_fd, ABS_HAT1Y,  prev->abs_hat1y,  curr->abs_hat1y, true);  // touchpad-l y-axis (negated)
-    send_abs(uinput_fd, ABS_HAT2X,  prev->abs_hat2x,  curr->abs_hat2x, false); // touchpad-r x-axis
-    send_abs(uinput_fd, ABS_HAT2Y,  prev->abs_hat2y,  curr->abs_hat2y, true);  // touchpad-r y-axis (negated)
-    send_keys_as_abs(
-        uinput_fd,
-        ABS_HAT0X,
-        prev->btn_dpad_left,
-        prev->btn_dpad_right,
-        curr->btn_dpad_left,
-        curr->btn_dpad_right
-    );
-    send_keys_as_abs(
-        uinput_fd,
-        ABS_HAT0Y,
-        prev->btn_dpad_up,
-        prev->btn_dpad_down,
-        curr->btn_dpad_up,
-        curr->btn_dpad_down
-    );
-    uinput_sync(uinput_fd);
-    return 0;
-}
-
 #define GAMEPAD_MAX_SLOTS 16
+
 struct gamepad_slots {
     struct gamepad_slot {
         char device[NAME_MAX];
         int hidraw_fd;
-        int uinput_fd;
+        int gamepad_fd;
+        int mouse_fd;
         struct sc_gamepad_state gamepad;
     } slots[GAMEPAD_MAX_SLOTS];
     size_t count;
@@ -379,7 +41,8 @@ int gamepad_slot_insert(
     struct gamepad_slots* const slots,
     char const* const device,
     int hidraw_fd,
-    int uinput_fd
+    int gamepad_fd,
+    int mouse_fd
 ) {
     for (size_t i = 0; i < slots->count; i++) {
         if (!strcmp(slots->slots[i].device, device)) {
@@ -394,8 +57,9 @@ int gamepad_slot_insert(
             fprintf(stderr, "gamepad device name too long\n");
             return 1;
         }
-        slot->hidraw_fd = hidraw_fd;
-        slot->uinput_fd = uinput_fd;
+        slot->hidraw_fd  = hidraw_fd;
+        slot->gamepad_fd = gamepad_fd;
+        slot->mouse_fd   = mouse_fd;
         memset(&slot->gamepad, 0, sizeof(slot->gamepad));
         slots->count += 1;
         return 0;
@@ -414,141 +78,9 @@ int gamepad_slot_remove(struct gamepad_slots* const slots, size_t index) {
     struct gamepad_slot* const dst = &slots->slots[index];
     struct gamepad_slot* const src = &slots->slots[slots->count - 1];
 
-    memmove(dst->device, src->device, NAME_MAX);
-    dst->hidraw_fd = src->hidraw_fd;
-    dst->uinput_fd = src->uinput_fd;
+    memmove(dst, src, sizeof(*dst));
 
     slots->count -= 1;
-
-    return 0;
-}
-
-#define HAT_MIN        -1
-#define HAT_MAX         1
-#define TRIGGER_MIN     0
-#define TRIGGER_MAX     32767
-#define THUMBSTICK_MIN -32767
-#define THUMBSTICK_MAX  32767
-#define TOUCHPAD_MIN   -32767
-#define TOUCHPAD_MAX    32767
-
-static int setup_axis(int fd, uint16_t code, uint32_t min, uint32_t max) {
-    struct uinput_abs_setup abs_setup = {
-        .code               = code,
-        .absinfo.minimum    = min,
-        .absinfo.maximum    = max,
-        .absinfo.flat       = 0,
-        .absinfo.fuzz       = 0,
-        .absinfo.resolution = 0,
-    };
-
-    if (ioctl(fd, UI_ABS_SETUP, &abs_setup)) {
-        return 1;
-    }
-
-    return 0;
-}
-
-int virtual_gamepad_setup(int* const uinput_fd) {
-    int fd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
-    if (fd < 0) {
-        perror("failed to open uinput device");
-        return 1;
-    }
-
-    if (ioctl(fd, UI_SET_EVBIT, EV_KEY) ||
-        ioctl(fd, UI_SET_EVBIT, EV_ABS)) {
-        perror("failed to set uinput device capabilities");
-        return 1;
-    }
-
-    if (ioctl(fd, UI_SET_KEYBIT, BTN_SOUTH)  || // a
-        ioctl(fd, UI_SET_KEYBIT, BTN_EAST)   || // b
-        ioctl(fd, UI_SET_KEYBIT, BTN_WEST)   || // x
-        ioctl(fd, UI_SET_KEYBIT, BTN_NORTH)  || // y
-        ioctl(fd, UI_SET_ABSBIT, ABS_HAT0X)  || // dpad x-axis
-        ioctl(fd, UI_SET_ABSBIT, ABS_HAT0Y)  || // dpad y-axis
-        ioctl(fd, UI_SET_KEYBIT, BTN_TL)     || // l1
-        ioctl(fd, UI_SET_KEYBIT, BTN_TR)     || // r1
-        ioctl(fd, UI_SET_KEYBIT, BTN_TL2)    || // l2
-        ioctl(fd, UI_SET_KEYBIT, BTN_TR2)    || // r2
-        ioctl(fd, UI_SET_KEYBIT, BTN_THUMBL) || // l3
-        ioctl(fd, UI_SET_KEYBIT, BTN_THUMBR) || // r3
-        ioctl(fd, UI_SET_KEYBIT, BTN_GRIPL)  || // l4
-        ioctl(fd, UI_SET_KEYBIT, BTN_GRIPR)  || // r4
-        ioctl(fd, UI_SET_KEYBIT, BTN_GRIPL2) || // l5
-        ioctl(fd, UI_SET_KEYBIT, BTN_GRIPR2) || // r5
-        ioctl(fd, UI_SET_KEYBIT, BTN_THUMB)  || // touchpad-l click
-        ioctl(fd, UI_SET_KEYBIT, BTN_THUMB2) || // touchpad-r click
-        ioctl(fd, UI_SET_KEYBIT, BTN_BASE)   || // quick
-        ioctl(fd, UI_SET_KEYBIT, BTN_START)  || // menu
-        ioctl(fd, UI_SET_KEYBIT, BTN_SELECT) || // view
-        ioctl(fd, UI_SET_KEYBIT, BTN_MODE)   || // steam
-        ioctl(fd, UI_SET_ABSBIT, ABS_X)      || // l-thumbstick x-axis
-        ioctl(fd, UI_SET_ABSBIT, ABS_Y)      || // l-thumbstick y-axis
-        ioctl(fd, UI_SET_ABSBIT, ABS_RX)     || // r-thumbstick x-axis
-        ioctl(fd, UI_SET_ABSBIT, ABS_RY)     || // r-thumbstick y-axis
-        ioctl(fd, UI_SET_ABSBIT, ABS_Z)      || // l2
-        ioctl(fd, UI_SET_ABSBIT, ABS_RZ)     || // r2
-        ioctl(fd, UI_SET_ABSBIT, ABS_HAT1X)  || // touchpad-l x-axis
-        ioctl(fd, UI_SET_ABSBIT, ABS_HAT1Y)  || // touchpad-l y-axis
-        ioctl(fd, UI_SET_ABSBIT, ABS_HAT2X)  || // touchpad-r x-axis
-        ioctl(fd, UI_SET_ABSBIT, ABS_HAT2Y)) {  // touchpad-r y-axis
-        perror("failed to configure uinput device buttons");
-        return 1;
-    }
-
-    if (setup_axis(fd, ABS_HAT0X, HAT_MIN,        HAT_MAX)        || // dpad x-axis
-        setup_axis(fd, ABS_HAT0Y, HAT_MIN,        HAT_MAX)        || // dpad y-axis
-        setup_axis(fd, ABS_Z,     TRIGGER_MIN,    TRIGGER_MAX)    || // l2
-        setup_axis(fd, ABS_RZ,    TRIGGER_MIN,    TRIGGER_MAX)    || // r2
-        setup_axis(fd, ABS_X,     THUMBSTICK_MIN, THUMBSTICK_MAX) || // l-thumbstick x-axis
-        setup_axis(fd, ABS_Y,     THUMBSTICK_MIN, THUMBSTICK_MAX) || // l-thumbstick y-axis
-        setup_axis(fd, ABS_RX,    THUMBSTICK_MIN, THUMBSTICK_MAX) || // r-thumbstick x-axis
-        setup_axis(fd, ABS_RY,    THUMBSTICK_MIN, THUMBSTICK_MAX) || // r-thumbstick y-axis
-        setup_axis(fd, ABS_HAT1X, TOUCHPAD_MIN,   TOUCHPAD_MAX)   || // touchpad-l x-axis
-        setup_axis(fd, ABS_HAT1Y, TOUCHPAD_MIN,   TOUCHPAD_MAX)   || // touchpad-l y-axis
-        setup_axis(fd, ABS_HAT2X, TOUCHPAD_MIN,   TOUCHPAD_MAX)   || // touchpad-r x-axis
-        setup_axis(fd, ABS_HAT2Y, TOUCHPAD_MIN,   TOUCHPAD_MAX)) {   // touchpad-r y-axis
-        perror("failed to configure uinput device axis");
-        return 1;
-    }
-
-    struct uinput_setup usetup = {
-        .name = "Virtual Controller",
-        .id = {
-            .bustype = BUS_VIRTUAL,
-            .vendor  = 0x0000,
-            .product = 0x0000,
-            .version = 1,
-        }
-    };
-
-    if (ioctl(fd, UI_DEV_SETUP, &usetup)) {
-        perror("failed to setup uinput device");
-        return 1;
-    }
-
-    if (ioctl(fd, UI_DEV_CREATE)) {
-        perror("failed to create uinput device");
-        return 1;
-    }
-
-    *uinput_fd = fd;
-
-    return 0;
-}
-
-int virtual_gamepad_destroy(int fd) {
-    if (ioctl(fd, UI_DEV_DESTROY)) {
-        perror("failed to destroy virtual gamepad");
-        return 1;
-    }
-
-    if (close(fd)) {
-        perror("failed to close virtual gamepad");
-        return 1;
-    }
 
     return 0;
 }
@@ -632,23 +164,32 @@ int maybe_add_gamepad(
         return 1;
     }
 
-    int uinput_fd = -1;
-    if (virtual_gamepad_setup(&uinput_fd)) {
-        cleanup_fd(&hidraw_fd);
-        return 1;
-    }
-
-    // TODO
     if (epoll_ctl_add(epoll_fd, hidraw_fd, EPOLLIN | EPOLLRDHUP)) {
-        cleanup_fd(&hidraw_fd);
-        virtual_gamepad_destroy(uinput_fd);
-        return 1;
-    }
-
-    if (gamepad_slot_insert(slots, device, hidraw_fd, uinput_fd)) {
         epoll_ctl_remove(epoll_fd, hidraw_fd);
         cleanup_fd(&hidraw_fd);
-        virtual_gamepad_destroy(uinput_fd);
+        return 1;
+    }
+
+    int gamepad_fd = -1;
+    if (virtual_gamepad_setup(&gamepad_fd)) {
+        epoll_ctl_remove(epoll_fd, hidraw_fd);
+        cleanup_fd(&hidraw_fd);
+        return 1;
+    }
+
+    int mouse_fd = -1;
+    if (virtual_mouse_setup(&mouse_fd)) {
+        epoll_ctl_remove(epoll_fd, hidraw_fd);
+        cleanup_fd(&hidraw_fd);
+        virtual_gamepad_destroy(gamepad_fd);
+        return 1;
+    }
+
+    if (gamepad_slot_insert(slots, device, hidraw_fd, gamepad_fd, mouse_fd)) {
+        epoll_ctl_remove(epoll_fd, hidraw_fd);
+        cleanup_fd(&hidraw_fd);
+        virtual_gamepad_destroy(gamepad_fd);
+        virtual_gamepad_destroy(mouse_fd);
         return 1;
     }
 
@@ -663,7 +204,6 @@ int process_gamepad(struct gamepad_slots* slots, int epoll_fd, size_t index) {
 
     ssize_t length = read(slot->hidraw_fd, buffer, sizeof(buffer));
     if (length == -1) {
-        // TODO
         if (errno != EIO) {
             perror("failed to read from gamepad");
         }
@@ -672,22 +212,26 @@ int process_gamepad(struct gamepad_slots* slots, int epoll_fd, size_t index) {
             return 1;
         }
         cleanup_fd(&slot->hidraw_fd);
-        virtual_gamepad_destroy(slot->uinput_fd);
+        virtual_gamepad_destroy(slot->gamepad_fd);
+        virtual_mouse_destroy(slot->mouse_fd);
         printf("removed %s...\n", slot->device);
 
         if (gamepad_slot_remove(slots, index)) {
             return 1;
         }
 
-        // TODO
         return 0;
     }
 
     struct sc_gamepad_state gamepad = { 0 };
     memcpy(&gamepad, &slot->gamepad, sizeof(gamepad));
     sc_gamepad_state_update(&gamepad, buffer);
-    sc_gamepad_state_send(slot->uinput_fd, &slot->gamepad, &gamepad);
-    //sc_gamepad_state_print(&gamepad);
+    sc_gamepad_state_send(
+        slot->gamepad_fd,
+        slot->mouse_fd,
+        &slot->gamepad,
+        &gamepad);
+    /*sc_gamepad_state_print(&gamepad);*/
     memcpy(&slot->gamepad, &gamepad, sizeof(gamepad));
 
     return 0;
@@ -745,7 +289,6 @@ int process_initial(struct gamepad_slots* slots, int epoll_fd) {
 
     return 0;
 }
-
 
 #define MAX_EPOLL_EVENTS 32
 

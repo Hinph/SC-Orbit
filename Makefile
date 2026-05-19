@@ -11,7 +11,10 @@ BIN_DIR = $(abspath $(ROOT_DIR)/bin)
 OBJ_DIR = $(abspath $(ROOT_DIR)/obj)
 SRC_DIR = $(abspath $(ROOT_DIR)/src)
 
-OBJS = $(OBJ_DIR)/main.o
+OBJS = $(OBJ_DIR)/main.o \
+       $(OBJ_DIR)/sc_gamepad_state.o \
+       $(OBJ_DIR)/virtual_gamepad.o \
+       $(OBJ_DIR)/virtual_mouse.o
 
 $(BINDIR)/scwrapper: $(OBJS) | $(BIN_DIR)
 	$(CC) $(CFLAGS) $(OBJS) $(LDFLAGS) -o bin/scwrapper
