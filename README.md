@@ -35,16 +35,10 @@ db_url = https://raw.githubusercontent.com/bnpfeife/scwrapper/db/db.json.zip
 
 ## Linux Installation Guide
 
-1. Download the [udev rules](https://raw.githubusercontent.com/bnpfeife/scwrapper/refs/heads/main/Linux/files/99-disable-sc.rules) and place it in the `/etc/udev/rules.d` directory.
-2. Reboot or run these commands:
-```
-# udevadm control --reload-rules
-# udevadm trigger
-```
-3. Download the [latest](https://github.com/bnpfeife/scwrapper/releases/tag/latest) scwrapper binary from Releases.
-4. Run `scwrapper`
-5. Plug in your Steam Controller (or Puck).
-6. Enjoy! (Please report any issues or bugs you encounter!)
+1. Download the [latest](https://github.com/bnpfeife/scwrapper/releases/tag/latest) scwrapper binary from Releases.
+2. Run `scwrapper`
+3. Plug in your Steam Controller (or Puck).
+4. Enjoy! (Please report any issues or bugs you encounter!)
 
 ## Build Guide
 ### For Desktop Linux:
