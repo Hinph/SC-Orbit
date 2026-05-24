@@ -1,5 +1,6 @@
 #include "codes.h"
 #include "virtual_gamepad.h"
+#include "constants.h"
 
 #include <fcntl.h>
 #include <stdint.h>
@@ -100,12 +101,12 @@ int virtual_gamepad_setup(int* const uinput_fd) {
     }
 
     struct uinput_setup usetup = {
-        .name = "Virtual Controller",
+        .name = VIRTUAL_DEV_NAME_GAMEPAD,
         .id = {
             .bustype = BUS_VIRTUAL,
-            .vendor  = 0x0000,
-            .product = 0x0000,
-            .version = 1,
+            .vendor  = VIRTUAL_DEV_VENDOR,
+            .product = VIRTUAL_DEV_PRODUCT,
+            .version = VIRTUAL_DEV_VERSION,
         }
     };
 
