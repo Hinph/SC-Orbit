@@ -1,4 +1,5 @@
-#pragma once
+#ifndef SCWRAPPER_SC_GAMEPAD_STATE_H
+#define SCWRAPPER_SC_GAMEPAD_STATE_H
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -61,3 +62,5 @@ int sc_gamepad_state_send(
     int mouse_fd,
     struct sc_gamepad_state const* const prev,
     struct sc_gamepad_state const* const curr);
+
+#endif // SCWRAPPER_SC_GAMEPAD_STATE_H

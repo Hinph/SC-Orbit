@@ -1,22 +1,12 @@
-#include "codes.h"
-#include "virtual_gamepad.h"
 #include "constants.h"
+#include "virtual_gamepad.h"
 
 #include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <unistd.h>
-
+#include <linux/uinput.h>
 #include <sys/ioctl.h>
-
-#define HAT_MIN        -1
-#define HAT_MAX         1
-#define TRIGGER_MIN     0
-#define TRIGGER_MAX     32767
-#define THUMBSTICK_MIN -32767
-#define THUMBSTICK_MAX  32767
-#define TOUCHPAD_MIN   -32767
-#define TOUCHPAD_MAX    32767
 
 static int uinput_setup_axis(
     int fd,
@@ -101,12 +91,12 @@ int virtual_gamepad_setup(int* const uinput_fd) {
     }
 
     struct uinput_setup usetup = {
-        .name = VIRTUAL_DEV_NAME_GAMEPAD,
+        .name = VIRTUAL_GAMEPAD_NAME,
         .id = {
             .bustype = BUS_VIRTUAL,
-            .vendor  = VIRTUAL_DEV_VENDOR,
-            .product = VIRTUAL_DEV_PRODUCT,
-            .version = VIRTUAL_DEV_VERSION,
+            .vendor  = VIRTUAL_GAMEPAD_VENDOR,
+            .product = VIRTUAL_GAMEPAD_PRODUCT,
+            .version = VIRTUAL_GAMEPAD_VERSION,
         }
     };
 

@@ -1,12 +1,13 @@
-#include "virtual_mouse.h"
 #include "constants.h"
+#include "virtual_mouse.h"
 
 #include <fcntl.h>
-#include <stdio.h>
 #include <stdint.h>
-#include <sys/ioctl.h>
+#include <stdio.h>
 #include <unistd.h>
+
 #include <linux/uinput.h>
+#include <sys/ioctl.h>
 
 int virtual_mouse_setup(int* const uinput_fd) {
     if ((*uinput_fd = open("/dev/uinput", O_WRONLY)) < 0) {

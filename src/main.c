@@ -1,21 +1,20 @@
+#include "constants.h"
+#include "sc_gamepad_state.h"
+#include "virtual_gamepad.h"
+#include "virtual_mouse.h"
+
 #include <dirent.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
+#include <unistd.h>
+#include <linux/hidraw.h>
 #include <sys/epoll.h>
 #include <sys/inotify.h>
-#include <unistd.h>
-#include <errno.h>
-#include <linux/hidraw.h>
-#include <time.h>
-
-#include "virtual_gamepad.h"
-#include "virtual_mouse.h"
-#include "sc_gamepad_state.h"
-
-#include "constants.h"
 
 static int safe_strcpy(char* const dst, char const* const src, size_t count) {
     if ((count == 0) || (count <= strlen(src))) {
