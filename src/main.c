@@ -15,6 +15,8 @@
 #include "virtual_mouse.h"
 #include "sc_gamepad_state.h"
 
+#include "constants.h"
+
 static int safe_strcpy(char* const dst, char const* const src, size_t count) {
     if ((count == 0) || (count <= strlen(src))) {
         return 1;
@@ -226,10 +228,12 @@ int try_add_gamepad(
         return 1;
     }
 
-    // 28de:1302 Steam Controller
-    // 28de:1304 Steam Controller Puck
-    if (!(info.vendor == 0x28de && info.product == 0x1302) &&
-        !(info.vendor == 0x28de && info.product == 0x1304)) {
+    bool is_steam = (info.vendor == STEAM_VENDOR_ID) && (
+        (info.product == STEAM_PRODUCT_CONTROLLER) ||
+        (info.product == STEAM_PRODUCT_CONTROLLER_BLUETOOTH) ||
+        (info.product == STEAM_PRODUCT_PUCK));
+
+    if (!is_steam) {
         cleanup_fd(&hidraw_fd);
         return 1;
     }

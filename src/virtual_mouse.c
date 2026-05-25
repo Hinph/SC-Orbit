@@ -1,4 +1,5 @@
 #include "virtual_mouse.h"
+#include "constants.h"
 
 #include <fcntl.h>
 #include <stdio.h>
@@ -28,12 +29,12 @@ int virtual_mouse_setup(int* const uinput_fd) {
     }
 
     struct uinput_setup usetup = {
-        .name = "Virtual Mouse",
+        .name = VIRTUAL_MOUSE_NAME,
         .id = {
             .bustype = BUS_VIRTUAL,
-            .vendor  = 0x0000,
-            .product = 0x0000,
-            .version = 1,
+            .vendor  = VIRTUAL_MOUSE_VENDOR,
+            .product = VIRTUAL_MOUSE_PRODUCT,
+            .version = VIRTUAL_MOUSE_VERSION,
         }
     };
 

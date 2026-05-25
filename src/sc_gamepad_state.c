@@ -250,8 +250,8 @@ static int translate_buttons(
 ) {
     if (emit_key(gamepad_fd, BTN_SOUTH,  prev->btn_a,      curr->btn_a)      || // a
         emit_key(gamepad_fd, BTN_EAST,   prev->btn_b,      curr->btn_b)      || // b
-        emit_key(gamepad_fd, BTN_NORTH,  prev->btn_x,      curr->btn_x)      || // x (swapped with Y)
-        emit_key(gamepad_fd, BTN_WEST,   prev->btn_y,      curr->btn_y)      || // y (swapped with X)
+        emit_key(gamepad_fd, BTN_WEST,   prev->btn_x,      curr->btn_x)      || // x
+        emit_key(gamepad_fd, BTN_NORTH,  prev->btn_y,      curr->btn_y)      || // y
         emit_key(gamepad_fd, BTN_TL,     prev->btn_l1,     curr->btn_l1)     || // l1
         emit_key(gamepad_fd, BTN_TR,     prev->btn_r1,     curr->btn_r1)     || // r1
         emit_key(gamepad_fd, BTN_TL2,    prev->btn_l2,     curr->btn_l2)     || // l2 (full press)
