@@ -2,10 +2,11 @@
 #define SCWRAPPER_SC_GAMEPAD_STATE_H
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
-// steam controller
-struct sc_gamepad_state {
+// Steam Controller
+struct ScGamepadState {
     bool      btn_a;           // a
     bool      btn_b;           // b
     bool      btn_x;           // x
@@ -46,21 +47,15 @@ struct sc_gamepad_state {
     bool      tpr_sense; // right touchpad sense
     int16_t   tpr_abs_x; // right touchpad x-axis
     int16_t   tpr_abs_y; // right touchpad y-axis
-
-    // int8_t mouse_l;       // mouse l click (unused)
-    // int8_t mouse_r;       // mouse r click (unused)
-    // int8_t mouse_rel_x;   // mouse relative x (unused)
-    // int8_t mouse_rel_y;   // mouse relative y (unused)
-    // int8_t mouse_wheel_x; // mouse wheel x (unused)
-    // int8_t mouse_wheel_y; // mouse wheel y (unused)
 };
 
-void sc_gamepad_state_update(struct sc_gamepad_state* const gamepad, uint8_t const* const buffer);
-void sc_gamepad_state_print(struct sc_gamepad_state const* const gamepad);
-int sc_gamepad_state_send(
+int ScGamepadState_update(struct ScGamepadState* const gamepad, uint8_t const* const buffer, size_t length);
+void ScGamepadState_print(struct ScGamepadState const* const gamepad);
+int ScGamepadState_send(
+    int hidraw_fd,
     int gamepad_fd,
     int mouse_fd,
-    struct sc_gamepad_state const* const prev,
-    struct sc_gamepad_state const* const curr);
+    struct ScGamepadState const* const prev,
+    struct ScGamepadState const* const curr);
 
 #endif // SCWRAPPER_SC_GAMEPAD_STATE_H

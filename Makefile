@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -Wall -pedantic
-LDFLAGS =
+LDFLAGS = -lm
 
 ifdef RELEASE
 CFLAGS += -O2 -s
@@ -12,7 +12,11 @@ OBJ_DIR = $(abspath $(ROOT_DIR)/obj)
 SRC_DIR = $(abspath $(ROOT_DIR)/src)
 
 OBJS = $(OBJ_DIR)/main.o \
+       $(OBJ_DIR)/gamepad.o \
        $(OBJ_DIR)/sc_gamepad_state.o \
+       $(OBJ_DIR)/stopwatch.o \
+       $(OBJ_DIR)/triton.o \
+       $(OBJ_DIR)/utils.o \
        $(OBJ_DIR)/virtual_gamepad.o \
        $(OBJ_DIR)/virtual_mouse.o
 
