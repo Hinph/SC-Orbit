@@ -1,16 +1,20 @@
 #include "constants.h"
 #include "sc_gamepad_state.h"
+#include "triton.h"
 
 #include <stdio.h>
+#include <string.h>
 #include <time.h>
 #include <unistd.h>
 #include <linux/uinput.h>
 
-void sc_gamepad_state_update(struct sc_gamepad_state* const gamepad, uint8_t const* const buffer) {
-    // https://github.com/libsdl-org/SDL/blob/main/src/joystick/hidapi/steam/controller_structs.h#L553
-    //   ID_TRITON_CONTROLLER_STATE     - 0x42
-    //   ID_TRITON_CONTROLLER_STATE_BLE - 0x45
-    if (buffer[0] == 0x42 || buffer[0] == 0x45) {
+int ScGamepadState_update(struct ScGamepadState* const gamepad, uint8_t const* const buffer, size_t length) {
+    if (buffer[0] == TRITON_ID_IN_CONTROLLER_STATE ||
+        buffer[0] == TRITON_ID_IN_CONTROLLER_STATE_BLE) {
+        if (length < 28) {
+            fprintf(stderr, "not enough bytes available to parse gamepad state\n");
+            return 1;
+        }
         // buttons
         gamepad->btn_a          = buffer[2] & 0x01; // a
         gamepad->btn_b          = buffer[2] & 0x02; // b
@@ -36,8 +40,8 @@ void sc_gamepad_state_update(struct sc_gamepad_state* const gamepad, uint8_t con
         gamepad->btn_mode       = buffer[4] & 0x01; // steam
 
         // triggers
-        gamepad->abs_l2 = buffer[ 6] | buffer[ 7] << 8; // l2 axis
-        gamepad->abs_r2 = buffer[ 8] | buffer[ 9] << 8; // r2 axis
+        gamepad->abs_l2 = buffer[6] | buffer[7] << 8; // l2 axis
+        gamepad->abs_r2 = buffer[8] | buffer[9] << 8; // r2 axis
 
         // thumbsticks
         gamepad->thumbl_abs_x = buffer[10] | buffer[11] << 8; // left thumbstick x-axis
@@ -57,19 +61,10 @@ void sc_gamepad_state_update(struct sc_gamepad_state* const gamepad, uint8_t con
         gamepad->tpr_abs_x = buffer[24] | buffer[25] << 8; // right touchpad x-axis
         gamepad->tpr_abs_y = buffer[26] | buffer[27] << 8; // right touchpad y-axis
     }
-
-    // // Report ID (64)
-    // if (buffer[0] == 64) {
-    //     gamepad->mouse_l       = buffer[1] & 0x1; // mouse l click
-    //     gamepad->mouse_r       = buffer[1] & 0x2; // mouse r click
-    //     gamepad->mouse_rel_x   = buffer[2];       // mouse relative x
-    //     gamepad->mouse_rel_y   = buffer[3];       // mouse relative y
-    //     gamepad->mouse_wheel_y = buffer[4];       // mouse wheel x
-    //     gamepad->mouse_wheel_x = buffer[5];       // mouse wheel y
-    // }
+    return 0;
 }
 
-void sc_gamepad_state_print(struct sc_gamepad_state const* const gamepad) {
+void ScGamepadState_print(struct ScGamepadState const* const gamepad) {
     printf(
         "a: %d, "
         "b: %d, "
@@ -145,6 +140,8 @@ void sc_gamepad_state_print(struct sc_gamepad_state const* const gamepad) {
 
 static int timeval_now(struct timeval* const tv) {
     struct timespec ts;
+    memset(&ts, 0, sizeof(ts));
+
     if (!clock_gettime(CLOCK_MONOTONIC, &ts)) {
         tv->tv_sec  = ts.tv_sec;
         tv->tv_usec = ts.tv_nsec / 1000;
@@ -245,13 +242,13 @@ static int emit_keys_as_abs(
 }
 static int translate_buttons(
     int gamepad_fd,
-    struct sc_gamepad_state const* const prev,
-    struct sc_gamepad_state const* const curr
+    struct ScGamepadState const* const prev,
+    struct ScGamepadState const* const curr
 ) {
     if (emit_key(gamepad_fd, BTN_SOUTH,  prev->btn_a,      curr->btn_a)      || // a
         emit_key(gamepad_fd, BTN_EAST,   prev->btn_b,      curr->btn_b)      || // b
-        emit_key(gamepad_fd, BTN_WEST,   prev->btn_x,      curr->btn_x)      || // x
-        emit_key(gamepad_fd, BTN_NORTH,  prev->btn_y,      curr->btn_y)      || // y
+        emit_key(gamepad_fd, BTN_NORTH,  prev->btn_x,      curr->btn_x)      || // x
+        emit_key(gamepad_fd, BTN_WEST,   prev->btn_y,      curr->btn_y)      || // y
         emit_key(gamepad_fd, BTN_TL,     prev->btn_l1,     curr->btn_l1)     || // l1
         emit_key(gamepad_fd, BTN_TR,     prev->btn_r1,     curr->btn_r1)     || // r1
         emit_key(gamepad_fd, BTN_TL2,    prev->btn_l2,     curr->btn_l2)     || // l2 (full press)
@@ -274,8 +271,8 @@ static int translate_buttons(
 
 static int translate_dpad(
     int gamepad_fd,
-    struct sc_gamepad_state const* const prev,
-    struct sc_gamepad_state const* const curr
+    struct ScGamepadState const* const prev,
+    struct ScGamepadState const* const curr
 ) {
     if (emit_keys_as_abs(
         gamepad_fd,
@@ -304,8 +301,8 @@ static int translate_dpad(
 
 static int translate_axis(
     int gamepad_fd,
-    struct sc_gamepad_state const* const prev,
-    struct sc_gamepad_state const* const curr
+    struct ScGamepadState const* const prev,
+    struct ScGamepadState const* const curr
 ) {
     if (emit_abs(gamepad_fd, ABS_Z,  prev->abs_l2, curr->abs_l2, false) || // l2
         emit_abs(gamepad_fd, ABS_RZ, prev->abs_r2, curr->abs_r2, false)) { // r2
@@ -322,17 +319,105 @@ static int translate_axis(
     return 0;
 }
 
+#define MOUSE_CLICK_HAPTICS_FREQUENCY 200 // Hz
+#define MOUSE_CLICK_HAPTICS_DURATION 5 // milliseconds
+#define TOUCHPAD_HAPTICS_FREQUENCY 400 // Hz
+#define TOUCHPAD_HAPTICS_DURATION 5 // milliseconds
+#define TOUCHPAD_HAPTICS_GRID_X 8192
+#define TOUCHPAD_HAPTICS_GRID_Y 8192
+
 static int translate_touchpad(
+    int hidraw_fd,
     int mouse_fd,
-    struct sc_gamepad_state const* const prev,
-    struct sc_gamepad_state const* const curr
+    struct ScGamepadState const* const prev,
+    struct ScGamepadState const* const curr
 ) {
+    bool has_tone_l = false;
+    bool has_tone_r = false;
+
+    // should play left-click tone?
+    if (!prev->tpr_click && curr->tpr_click) {
+        has_tone_r = true;
+        struct ScHapticsLfoTone tone = {
+            .channel       = TRITON_HAPTICS_LFO_TONE_LRA_R,
+            .gain          = 0,
+            .frequency     = MOUSE_CLICK_HAPTICS_FREQUENCY,
+            .duration_ms   = MOUSE_CLICK_HAPTICS_DURATION,
+            .lfo_frequency = 0,
+            .lfo_depth     = 0,
+        };
+        if (triton_haptics_lfo_tone(hidraw_fd, tone)) {
+            return 1;
+        }
+    }
+
+    // should play right-click tone?
+    if (!prev->tpl_click && curr->tpl_click) {
+        has_tone_l = true;
+        struct ScHapticsLfoTone tone = {
+            .channel       = TRITON_HAPTICS_LFO_TONE_LRA_L,
+            .gain          = 0,
+            .frequency     = MOUSE_CLICK_HAPTICS_FREQUENCY,
+            .duration_ms   = MOUSE_CLICK_HAPTICS_DURATION,
+            .lfo_frequency = 0,
+            .lfo_depth     = 0,
+        };
+        if (triton_haptics_lfo_tone(hidraw_fd, tone)) {
+            return 1;
+        }
+    }
+
+    if (prev->tpl_sense && curr->tpl_sense) {
+        const int32_t haptics_grid_x =
+            curr->tpl_abs_x / TOUCHPAD_HAPTICS_GRID_X !=
+            prev->tpl_abs_x / TOUCHPAD_HAPTICS_GRID_X;
+        const int32_t haptics_grid_y =
+            curr->tpl_abs_y / TOUCHPAD_HAPTICS_GRID_Y !=
+            prev->tpl_abs_y / TOUCHPAD_HAPTICS_GRID_Y;
+
+        if (!has_tone_l && (haptics_grid_x || haptics_grid_y)) {
+            if (triton_haptics_lfo_tone(hidraw_fd, (struct ScHapticsLfoTone) {
+                .channel       = TRITON_HAPTICS_LFO_TONE_LRA_L,
+                .gain          = 0,
+                .frequency     = TOUCHPAD_HAPTICS_FREQUENCY,
+                .duration_ms   = TOUCHPAD_HAPTICS_DURATION,
+                .lfo_frequency = 0,
+                .lfo_depth     = 0,
+            })) {
+                return 1;
+            }
+            has_tone_l = true;
+        }
+    }
+
     if (prev->tpr_sense && curr->tpr_sense) {
         const int32_t rel_x = (curr->tpr_abs_x - prev->tpr_abs_x) / 128;
         const int32_t rel_y = (prev->tpr_abs_y - curr->tpr_abs_y) / 128;
         if (uinput_emit(mouse_fd, EV_REL, REL_X, rel_x) ||
             uinput_emit(mouse_fd, EV_REL, REL_Y, rel_y)) {
             return 1;
+        }
+
+        const int32_t haptics_grid_x =
+            curr->tpr_abs_x / TOUCHPAD_HAPTICS_GRID_X !=
+            prev->tpr_abs_x / TOUCHPAD_HAPTICS_GRID_X;
+        const int32_t haptics_grid_y =
+            curr->tpr_abs_y / TOUCHPAD_HAPTICS_GRID_Y !=
+            prev->tpr_abs_y / TOUCHPAD_HAPTICS_GRID_Y;
+
+        if (!has_tone_r && (haptics_grid_x || haptics_grid_y)) {
+            has_tone_r = true;
+            struct ScHapticsLfoTone tone = {
+                .channel       = TRITON_HAPTICS_LFO_TONE_LRA_R,
+                .gain          = 0,
+                .frequency     = TOUCHPAD_HAPTICS_FREQUENCY,
+                .duration_ms   = TOUCHPAD_HAPTICS_DURATION,
+                .lfo_frequency = 0,
+                .lfo_depth     = 0,
+            };
+            if (triton_haptics_lfo_tone(hidraw_fd, tone)) {
+                return 1;
+            }
         }
     }
 
@@ -344,16 +429,17 @@ static int translate_touchpad(
     return 0;
 }
 
-int sc_gamepad_state_send(
+int ScGamepadState_send(
+    int hidraw_fd,
     int gamepad_fd,
     int mouse_fd,
-    struct sc_gamepad_state const* const prev,
-    struct sc_gamepad_state const* const curr
+    struct ScGamepadState const* const prev,
+    struct ScGamepadState const* const curr
 ) {
     if (translate_buttons(gamepad_fd, prev, curr) ||
         translate_dpad(gamepad_fd, prev, curr) ||
         translate_axis(gamepad_fd, prev, curr) ||
-        translate_touchpad(mouse_fd, prev, curr)) {
+        translate_touchpad(hidraw_fd, mouse_fd, prev, curr)) {
         return 1;
     }
 

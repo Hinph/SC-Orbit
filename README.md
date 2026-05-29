@@ -7,15 +7,16 @@ SCWrapper is a Linux application that translates inputs from the 2026 version of
 - Basic Steam Controller support (buttons, triggers, touchpads, and joysticks.)
 - Support for the Steam Controller Puck (i.e. handling multiple controllers) --- Note: This is untested, because I only have one controller.
 - *Multiple* Puck Support: up to 16 controllers, but can be compiled to handle more. --- Note: Untested for the same reason.
+- Rumble Support
 - Supports:
   - x86_64 Linux
   - ARMv7L Linux (for the MisterFPGA)
 
 ### Planned Features:
-- Rumble Support
 - Gyro Support
 - Alternative Touchpad Configurations
 - Haptics Support (?)
+- Statical Compilation with Musl
 
 ## MisterFPGA / MisterPi Installation Guide
 
