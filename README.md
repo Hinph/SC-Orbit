@@ -16,7 +16,7 @@ SCWrapper is a Linux application that translates inputs from the 2026 version of
 - Gyro Support
 - Alternative Touchpad Configurations
 - Haptics Support (?)
-- Statical Compilation with Musl
+- Static Compilation with Musl
 
 ## MisterFPGA / MisterPi Installation Guide
 
