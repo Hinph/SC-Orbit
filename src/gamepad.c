@@ -40,6 +40,12 @@ int Gamepad_init(struct Gamepad* const gamepad, int epoll, int hidraw) {
         (void)Gamepad_free(gamepad, epoll);
         return 1;
     }
+
+    // This is required for `Gamepad_configure` to configure the controller
+    // immediately. Otherwise, `GAMEPAD_CONFIG_INTERVAL` must elapse before
+    // the controller no longer behaves like a mouse and keyboard.
+    gamepad->sw_config.triggered = true;
+
     return 0;
 }
 
