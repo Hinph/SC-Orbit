@@ -9,7 +9,7 @@
 #include <sys/epoll.h>
 
 #define GAMEPAD_CONFIG_INTERVAL 5000 // milliseconds
-#define GAMEPAD_HAPTICS_INTERVAL 8 // milliseconds
+#define GAMEPAD_HAPTICS_INTERVAL 40 // milliseconds
 
 int Gamepad_init(struct Gamepad* const gamepad, int epoll, int hidraw) {
     gamepad->hidraw     = hidraw;

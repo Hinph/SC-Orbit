@@ -118,7 +118,7 @@ int try_add_gamepad(
     // cause a noticeable delay when processing game controller input,
     // but it should occur somewhat rarely.
     for (size_t i = 0; i < 10; i++) {
-        if (((hidraw_fd = open(path, O_RDWR)) != -1) || !retry) {
+        if (((hidraw_fd = open(path, O_RDWR | O_NONBLOCK)) != -1) || !retry) {
             break;
         }
         sleep(1);
