@@ -49,4 +49,9 @@
 #define TOUCHPAD_MIN -32767
 #define TOUCHPAD_MAX 32767
 
+// generic return codes
+#define RET_OKAY 0
+#define RET_ERROR 1
+#define RET_TIMEOUT 2
+
 #endif // SCWRAPPER_CONSTANTS_H

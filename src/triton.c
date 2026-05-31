@@ -1,3 +1,4 @@
+#include "constants.h"
 #include "triton.h"
 
 #include <math.h>
@@ -54,17 +55,17 @@ static uint8_t const TRITON_CLEAR_DIGITAL_MAPPINGS[64] = {
 int triton_disable_lizard_mode(int fd) {
     if (ioctl(fd, HIDIOCSFEATURE(sizeof(TRITON_DISABLE_LIZARD_MODE)), TRITON_DISABLE_LIZARD_MODE) < 0) {
         perror("could not disable lizard mode");
-        return 1;
+        return RET_ERROR;
     }
-    return 0;
+    return RET_OKAY;
 }
 
 int triton_clear_digital_mappings(int fd) {
     if (ioctl(fd, HIDIOCSFEATURE(sizeof(TRITON_CLEAR_DIGITAL_MAPPINGS)), TRITON_CLEAR_DIGITAL_MAPPINGS) < 0) {
         perror("could not disable digital mappings");
-        return 1;
+        return RET_ERROR;
     }
-    return 0;
+    return RET_OKAY;
 }
 
 #define RUMBLE_GAIN 6 // unknown units
@@ -78,8 +79,8 @@ int triton_haptics_rumble(int fd, struct ScHapticsRumble rumble) {
     // Unfortunately, "intensity", "gain", and "speed" were derived through
     // subjective testing. Adjusting each parameter affects the perceived
     // rumble strength in a non-obvious way. While the algorithm used by
-    // this function does notreflect objective physical behavior, it seems
-    // to produce reasonable results across the games tested.
+    // this function does not reflect the motor's physical behavior, it
+    // seems to produce reasonable results across the games tested.
     //
     // SDL maps "left_speed" and "right_speed" to "rumble.strong" and
     // "rumble.weak" respectively. This produces incorrect behavior because
@@ -123,9 +124,9 @@ int triton_haptics_rumble(int fd, struct ScHapticsRumble rumble) {
     };
     if (write(fd, &message, TRITON_HAPTICS_RUMBLE_SIZE) != TRITON_HAPTICS_RUMBLE_SIZE) {
         perror("could not write rumble event");
-        return 1;
+        return RET_ERROR;
     }
-    return 0;
+    return RET_OKAY;
 }
 
 int triton_haptics_lfo_tone(int fd, struct ScHapticsLfoTone lfo_tone) {
@@ -142,7 +143,7 @@ int triton_haptics_lfo_tone(int fd, struct ScHapticsLfoTone lfo_tone) {
     };
     if (write(fd, &message, TRITON_HAPTICS_LFO_TONE_SIZE) != TRITON_HAPTICS_LFO_TONE_SIZE) {
         perror("could not write rumble event");
-        return 1;
+        return RET_ERROR;
     }
-    return 0;
+    return RET_OKAY;
 }

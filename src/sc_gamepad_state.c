@@ -13,7 +13,7 @@ int ScGamepadState_update(struct ScGamepadState* const gamepad, uint8_t const* c
         buffer[0] == TRITON_ID_IN_CONTROLLER_STATE_BLE) {
         if (length < 28) {
             fprintf(stderr, "not enough bytes available to parse gamepad state\n");
-            return 1;
+            return RET_ERROR;
         }
         // buttons
         gamepad->btn_a          = buffer[2] & 0x01; // a
@@ -61,7 +61,7 @@ int ScGamepadState_update(struct ScGamepadState* const gamepad, uint8_t const* c
         gamepad->tpr_abs_x = buffer[24] | buffer[25] << 8; // right touchpad x-axis
         gamepad->tpr_abs_y = buffer[26] | buffer[27] << 8; // right touchpad y-axis
     }
-    return 0;
+    return RET_OKAY;
 }
 
 void ScGamepadState_print(struct ScGamepadState const* const gamepad) {
@@ -145,10 +145,9 @@ static int timeval_now(struct timeval* const tv) {
     if (!clock_gettime(CLOCK_MONOTONIC, &ts)) {
         tv->tv_sec  = ts.tv_sec;
         tv->tv_usec = ts.tv_nsec / 1000;
-        return 0;
+        return RET_OKAY;
     }
-
-    return 1;
+    return RET_ERROR;
 }
 
 static int uinput_emit(
@@ -164,14 +163,12 @@ static int uinput_emit(
     };
 
     if (timeval_now(&event.time)) {
-        return 1;
+        return RET_ERROR;
     }
-
     if (write(fd, &event, sizeof(event)) != sizeof(event)) {
-        return 1;
+        return RET_ERROR;
     }
-
-    return 0;
+    return RET_OKAY;
 }
 
 static int uinput_sync(int fd) {
@@ -182,14 +179,12 @@ static int uinput_sync(int fd) {
     };
 
     if (timeval_now(&event.time)) {
-        return 1;
+        return RET_ERROR;
     }
-
     if (write(fd, &event, sizeof(event)) != sizeof(event)) {
-        return 1;
+        return RET_ERROR;
     }
-
-    return 0;
+    return RET_OKAY;
 }
 
 static int emit_key(
@@ -200,11 +195,10 @@ static int emit_key(
 ) {
     if (pval != cval) {
         if (uinput_emit(fd, EV_KEY, code, cval)) {
-            return 1;
+            return RET_ERROR;
         }
     }
-
-    return 0;
+    return RET_OKAY;
 }
 
 static int emit_abs(
@@ -216,11 +210,10 @@ static int emit_abs(
 ) {
     if (pval != cval) {
         if (uinput_emit(fd, EV_ABS, code, negate ? -cval : cval)) {
-            return 1;
+            return RET_ERROR;
         }
     }
-
-    return 0;
+    return RET_OKAY;
 }
 
 static int emit_keys_as_abs(
@@ -234,11 +227,10 @@ static int emit_keys_as_abs(
     if ((pval_pole_neg != cval_pole_neg) ||
         (pval_pole_pos != cval_pole_pos)) {
         if (uinput_emit(fd, EV_ABS, code, cval_pole_pos - cval_pole_neg)) {
-            return 1;
+            return RET_ERROR;
         }
     }
-
-    return 0;
+    return RET_OKAY;
 }
 static int translate_buttons(
     int gamepad_fd,
@@ -263,10 +255,9 @@ static int translate_buttons(
         emit_key(gamepad_fd, BTN_START,  prev->btn_start,  curr->btn_start)  || // menu
         emit_key(gamepad_fd, BTN_SELECT, prev->btn_select, curr->btn_select) || // view
         emit_key(gamepad_fd, BTN_MODE,   prev->btn_mode,   curr->btn_mode)) {   // steam
-        return 1;
+        return RET_ERROR;
     }
-
-    return 0;
+    return RET_OKAY;
 }
 
 static int translate_dpad(
@@ -282,7 +273,7 @@ static int translate_dpad(
         curr->btn_dpad_left,
         curr->btn_dpad_right
     )) {
-        return 1;
+        return RET_ERROR;
     }
 
     if (emit_keys_as_abs(
@@ -293,10 +284,10 @@ static int translate_dpad(
         curr->btn_dpad_up,
         curr->btn_dpad_down
     )) {
-        return 1;
+        return RET_ERROR;
     }
 
-    return 0;
+    return RET_OKAY;
 }
 
 static int translate_axis(
@@ -306,17 +297,15 @@ static int translate_axis(
 ) {
     if (emit_abs(gamepad_fd, ABS_Z,  prev->abs_l2, curr->abs_l2, false) || // l2
         emit_abs(gamepad_fd, ABS_RZ, prev->abs_r2, curr->abs_r2, false)) { // r2
-        return 1;
+        return RET_ERROR;
     }
-
     if (emit_abs(gamepad_fd, ABS_X,  prev->thumbl_abs_x, curr->thumbl_abs_x, false) || // left thumbstick x-axis
         emit_abs(gamepad_fd, ABS_Y,  prev->thumbl_abs_y, curr->thumbl_abs_y, true)  || // left thumbstick y-axis (negated)
         emit_abs(gamepad_fd, ABS_RX, prev->thumbr_abs_x, curr->thumbr_abs_x, false) || // right thumbstick x-axis
         emit_abs(gamepad_fd, ABS_RY, prev->thumbr_abs_y, curr->thumbr_abs_y, true)) {  // right thumbstick y-axis (negated)
-        return 1;
+        return RET_ERROR;
     }
-
-    return 0;
+    return RET_OKAY;
 }
 
 #define MOUSE_CLICK_HAPTICS_FREQUENCY 200 // Hz
@@ -347,7 +336,7 @@ static int translate_touchpad(
             .lfo_depth     = 0,
         };
         if (triton_haptics_lfo_tone(hidraw_fd, tone)) {
-            return 1;
+            return RET_ERROR;
         }
     }
 
@@ -363,7 +352,7 @@ static int translate_touchpad(
             .lfo_depth     = 0,
         };
         if (triton_haptics_lfo_tone(hidraw_fd, tone)) {
-            return 1;
+            return RET_ERROR;
         }
     }
 
@@ -384,7 +373,7 @@ static int translate_touchpad(
                 .lfo_frequency = 0,
                 .lfo_depth     = 0,
             })) {
-                return 1;
+                return RET_ERROR;
             }
             has_tone_l = true;
         }
@@ -395,7 +384,7 @@ static int translate_touchpad(
         const int32_t rel_y = (prev->tpr_abs_y - curr->tpr_abs_y) / 128;
         if (uinput_emit(mouse_fd, EV_REL, REL_X, rel_x) ||
             uinput_emit(mouse_fd, EV_REL, REL_Y, rel_y)) {
-            return 1;
+            return RET_ERROR;
         }
 
         const int32_t haptics_grid_x =
@@ -416,17 +405,16 @@ static int translate_touchpad(
                 .lfo_depth     = 0,
             };
             if (triton_haptics_lfo_tone(hidraw_fd, tone)) {
-                return 1;
+                return RET_ERROR;
             }
         }
     }
 
     if (uinput_emit(mouse_fd, EV_KEY, BTN_LEFT,  curr->tpr_click) ||
         uinput_emit(mouse_fd, EV_KEY, BTN_RIGHT, curr->tpl_click)) {
-        return 1;
+        return RET_ERROR;
     }
-
-    return 0;
+    return RET_OKAY;
 }
 
 int ScGamepadState_send(
@@ -440,13 +428,11 @@ int ScGamepadState_send(
         translate_dpad(gamepad_fd, prev, curr) ||
         translate_axis(gamepad_fd, prev, curr) ||
         translate_touchpad(hidraw_fd, mouse_fd, prev, curr)) {
-        return 1;
+        return RET_ERROR;
     }
-
     if (uinput_sync(gamepad_fd) ||
         uinput_sync(mouse_fd)) {
-        return 1;
+        return RET_ERROR;
     }
-
-    return 0;
+    return RET_OKAY;
 }

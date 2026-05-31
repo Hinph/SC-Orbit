@@ -1,112 +1,121 @@
+#include "constants.h"
 #include "gamepad.h"
-#include "triton.h"
 #include "utils.h"
 #include "virtual_gamepad.h"
-#include "virtual_mouse.h"
 
 #include <stdio.h>
-#include <unistd.h>
+#include <string.h>
 #include <sys/epoll.h>
-
-#define GAMEPAD_CONFIG_INTERVAL 5000 // milliseconds
-#define GAMEPAD_HAPTICS_INTERVAL 40 // milliseconds
+#include <unistd.h>
 
 int Gamepad_init(struct Gamepad* const gamepad, int epoll, int hidraw) {
-    gamepad->hidraw     = hidraw;
-    gamepad->ui_gamepad = -1;
-    gamepad->ui_mouse   = -1;
-
-    if (Stopwatch_init(&gamepad->sw_config, GAMEPAD_CONFIG_INTERVAL)) {
+    // The Steam Controller puck exposes four "hidraw" devices regardless
+    // of whether a controller is currently attached. To account for this
+    // behavior, initialize the gamepad in "GAMEPAD_STATE_PENDING" and
+    // defer creation of the virtual gamepad and mouse. This prevents
+    // applications that list gamepads from displaying gamepads
+    // that are not actually connected.
+    *gamepad = (struct Gamepad) {
+        .state  = GAMEPAD_STATE_PENDING,
+        .hidraw = hidraw,
+    };
+    if (epoll_ctl_add(epoll, hidraw, EPOLLIN | EPOLLRDHUP)) {
         (void)Gamepad_free(gamepad, epoll);
-        return 1;
+        return RET_ERROR;
     }
-    if (Stopwatch_init(&gamepad->sw_haptics, GAMEPAD_HAPTICS_INTERVAL)) {
-        (void)Gamepad_free(gamepad, epoll);
-        return 1;
-    }
-    if (virtual_mouse_setup(&gamepad->ui_mouse)) {
-        (void)Gamepad_free(gamepad, epoll);
-        return 1;
-    }
-    if (virtual_gamepad_setup(&gamepad->ui_gamepad)) {
-        (void)Gamepad_free(gamepad, epoll);
-        return 1;
-    }
-    if (epoll_ctl_add(epoll, gamepad->hidraw, EPOLLIN | EPOLLRDHUP)) {
-        (void)Gamepad_free(gamepad, epoll);
-        return 1;
-    }
-    if (epoll_ctl_add(epoll, gamepad->ui_gamepad, EPOLLIN | EPOLLRDHUP)) {
-        (void)Gamepad_free(gamepad, epoll);
-        return 1;
-    }
-
-    // This is required for `Gamepad_configure` to configure the controller
-    // immediately. Otherwise, `GAMEPAD_CONFIG_INTERVAL` must elapse before
-    // the controller no longer behaves like a mouse and keyboard.
-    gamepad->sw_config.triggered = true;
-
-    return 0;
+    return RET_OKAY;
 }
 
 int Gamepad_free(struct Gamepad* const gamepad, int epoll) {
-    int result = 0;
-    if (gamepad->hidraw != -1) {
-        if (epoll_ctl_remove(epoll, gamepad->hidraw)) {
-            result = 1;
-        }
-        if (close(gamepad->hidraw)) {
-            perror("failed to close the hidraw device");
-            result = 1;
+    int result = RET_OKAY;
+    if (epoll_ctl_remove(epoll, gamepad->hidraw)) {
+        result = RET_ERROR;
+    }
+    if (close(gamepad->hidraw)) {
+        perror("failed to close hidraw device");
+        result = RET_ERROR;
+    }
+    if (gamepad->state == GAMEPAD_STATE_ACTIVE) {
+        if (GamepadActive_free(&gamepad->u.active, epoll)) {
+            result = RET_ERROR;
         }
     }
-    if (gamepad->ui_mouse != -1) {
-        if (virtual_mouse_destroy(gamepad->ui_mouse)) {
-            result = 1;
-        }
-    }
-    if (gamepad->ui_gamepad != -1) {
-        if (epoll_ctl_remove(epoll, gamepad->ui_gamepad)) {
-            result = 1;
-        }
-        if (virtual_gamepad_destroy(gamepad->ui_gamepad)) {
-            result = 1;
-        }
-    }
+    gamepad->state = GAMEPAD_STATE_RELEASED;
     return result;
 }
 
-int Gamepad_configure(struct Gamepad* gamepad) {
-    if (Stopwatch_update(&gamepad->sw_config)) {
-        return 1;
+int Gamepad_into_active(struct Gamepad* const gamepad, int epoll) {
+    if (gamepad->state != GAMEPAD_STATE_PENDING) {
+        return RET_ERROR;
     }
-    if (gamepad->sw_config.triggered) {
-        if (Stopwatch_reset(&gamepad->sw_config)) {
-            return 1;
+    if (GamepadActive_init(&gamepad->u.active, epoll)) {
+        return RET_ERROR;
+    }
+    gamepad->state = GAMEPAD_STATE_ACTIVE;
+    return RET_OKAY;
+}
+
+int Gamepad_into_pending(struct Gamepad* const gamepad, int epoll) {
+    if (gamepad->state != GAMEPAD_STATE_ACTIVE) {
+        return RET_ERROR;
+    }
+    if (GamepadActive_free(&gamepad->u.active, epoll)) {
+        return RET_ERROR;
+    }
+    gamepad->state = GAMEPAD_STATE_PENDING;
+    return RET_OKAY;
+}
+
+int Gamepad_update(struct Gamepad* gamepad, int epoll) {
+    if (gamepad->state == GAMEPAD_STATE_ACTIVE) {
+        int result = GamepadActive_update(&gamepad->u.active, gamepad->hidraw);
+        if (result == RET_TIMEOUT) {
+            return Gamepad_into_pending(gamepad, epoll);
         }
-        if (triton_disable_lizard_mode(gamepad->hidraw)) {
-            return 1;
-        }
-        if (triton_clear_digital_mappings(gamepad->hidraw)) {
-            return 1;
+        if (result) {
+            return RET_ERROR;
         }
     }
-    return 0;
+    return RET_OKAY;
 }
 
 int Gamepad_update_haptics(struct Gamepad* const gamepad) {
-    if (gamepad->haptics.id == SC_HAPTICS_ID_RUMBLE) {
-        if (Stopwatch_update(&gamepad->sw_haptics)) {
-            return 1;
-        }
-        if (gamepad->sw_haptics.triggered) {
-            if (Stopwatch_reset(&gamepad->sw_haptics)) {
-                return 1;
-            }
-            if (triton_haptics_rumble(gamepad->hidraw, gamepad->haptics.u.rumble)) {
-                return 1;
-            }
+    if (gamepad->state == GAMEPAD_STATE_ACTIVE) {
+        return GamepadActive_update_haptics(&gamepad->u.active, gamepad->hidraw);
+    }
+    return RET_OKAY;
+}
+
+int Gamepad_get_hidraw(struct Gamepad const* const gamepad) {
+    return gamepad->hidraw;
+}
+
+int Gamepad_get_uinput(struct Gamepad const* const gamepad) {
+    if (gamepad->state == GAMEPAD_STATE_ACTIVE) {
+        return gamepad->u.active.ui_gamepad;
+    }
+    return -1;
+}
+
+int Gamepad_hidraw_event(struct Gamepad* const gamepad, int epoll) {
+    if (gamepad->state == GAMEPAD_STATE_PENDING) {
+        if (Gamepad_into_active(gamepad, epoll)) {
+            return RET_ERROR;
         }
     }
-    return 0;
+    if (gamepad->state == GAMEPAD_STATE_ACTIVE) {
+        if (GamepadActive_hidraw_event(&gamepad->u.active, gamepad->hidraw)) {
+            return RET_ERROR;
+        }
+    }
+    return RET_OKAY;
+}
+
+int Gamepad_uinput_event(struct Gamepad* const gamepad) {
+    if (gamepad->state == GAMEPAD_STATE_ACTIVE) {
+        if (GamepadActive_uinput_event(&gamepad->u.active)) {
+            return RET_ERROR;
+        }
+    }
+    return RET_OKAY;
 }
