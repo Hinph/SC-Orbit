@@ -4,6 +4,12 @@ LDFLAGS = -lm
 
 ifdef RELEASE
 CFLAGS += -O2 -s
+else
+CFLAGS += -g -fno-omit-frame-pointer
+endif
+
+ifdef ASAN
+CFLAGS += -fsanitize=address
 endif
 
 ROOT_DIR = $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
@@ -13,6 +19,7 @@ SRC_DIR = $(abspath $(ROOT_DIR)/src)
 
 OBJS = $(OBJ_DIR)/main.o \
        $(OBJ_DIR)/gamepad.o \
+       $(OBJ_DIR)/gamepad_active.o \
        $(OBJ_DIR)/sc_gamepad_state.o \
        $(OBJ_DIR)/stopwatch.o \
        $(OBJ_DIR)/triton.o \

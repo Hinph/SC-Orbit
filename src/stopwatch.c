@@ -1,3 +1,4 @@
+#include "constants.h"
 #include "stopwatch.h"
 
 #include <stdio.h>
@@ -24,25 +25,25 @@ static inline int64_t timespec_to_msecs(struct timespec const* const ts) {
 int timespec_now(struct timespec* const ts) {
     if (clock_gettime(CLOCK_MONOTONIC, ts)) {
         perror("failed to get the current time");
-        return 1;
+        return RET_ERROR;
     }
-    return 0;
+    return RET_OKAY;
 }
 
 int Stopwatch_init(struct Stopwatch* const watch, int64_t duration) {
     watch->duration = duration;
     if (timespec_now(&watch->ts_started)) {
-        return 1;
+        return RET_ERROR;
     }
-    return 0;
+    return RET_OKAY;
 }
 
 int Stopwatch_reset(struct Stopwatch* const watch) {
     watch->triggered = 0;
     if (timespec_now(&watch->ts_started)) {
-        return 1;
+        return RET_ERROR;
     }
-    return 0;
+    return RET_OKAY;
 }
 
 int Stopwatch_update(struct Stopwatch* const watch) {
@@ -52,7 +53,7 @@ int Stopwatch_update(struct Stopwatch* const watch) {
     memset(&ts_diff, 0, sizeof(ts_diff));
 
     if (timespec_now(&ts_curr)) {
-        return 1;
+        return RET_ERROR;
     }
 
     timespec_diff(&ts_curr, &watch->ts_started, &ts_diff);
@@ -60,5 +61,5 @@ int Stopwatch_update(struct Stopwatch* const watch) {
     if (timespec_to_msecs(&ts_diff) >= watch->duration) {
         watch->triggered = 1;
     }
-    return 0;
+    return RET_OKAY;
 }

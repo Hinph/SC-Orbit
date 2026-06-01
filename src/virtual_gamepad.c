@@ -24,21 +24,21 @@ static int uinput_setup_axis(
     };
 
     if (ioctl(fd, UI_ABS_SETUP, &abs_setup)) {
-        return 1;
+        return RET_ERROR;
     }
-    return 0;
+    return RET_OKAY;
 }
 
 int virtual_gamepad_setup(int* const fd) {
-    if ((*fd = open("/dev/uinput", O_RDWR)) < 0) {
+    if ((*fd = open("/dev/uinput", O_RDWR | O_NONBLOCK)) < 0) {
         perror("failed to open uinput device");
-        return 1;
+        return RET_ERROR;
     }
     if (ioctl(*fd, UI_SET_EVBIT, EV_KEY) ||
         ioctl(*fd, UI_SET_EVBIT, EV_ABS) ||
         ioctl(*fd, UI_SET_EVBIT, EV_FF)) {
         perror("failed to set uinput device capabilities");
-        return 1;
+        return RET_ERROR;
     }
     if (ioctl(*fd, UI_SET_KEYBIT, BTN_SOUTH)  || // a
         ioctl(*fd, UI_SET_KEYBIT, BTN_EAST)   || // b
@@ -69,7 +69,7 @@ int virtual_gamepad_setup(int* const fd) {
         ioctl(*fd, UI_SET_ABSBIT, ABS_Z)      || // l2
         ioctl(*fd, UI_SET_ABSBIT, ABS_RZ)) {     // r2
         perror("failed to set uinput device buttons");
-        return 1;
+        return RET_ERROR;
     }
 
     if (uinput_setup_axis(*fd, ABS_HAT0X, HAT_MIN,        HAT_MAX)        || // dpad x-axis
@@ -85,11 +85,11 @@ int virtual_gamepad_setup(int* const fd) {
         uinput_setup_axis(*fd, ABS_HAT2X, TOUCHPAD_MIN,   TOUCHPAD_MAX)   || // right touchpad x-axis (TODO: unused)
         uinput_setup_axis(*fd, ABS_HAT2Y, TOUCHPAD_MIN,   TOUCHPAD_MAX)) {   // right touchpad y-axis (TODO: unused)
         perror("failed to configure uinput device axis");
-        return 1;
+        return RET_ERROR;
     }
     if (ioctl(*fd, UI_SET_FFBIT, FF_RUMBLE)) {
         perror("failed to configure uinput haptics");
-        return 1;
+        return RET_ERROR;
     }
 
     struct uinput_setup usetup = {
@@ -105,24 +105,24 @@ int virtual_gamepad_setup(int* const fd) {
 
     if (ioctl(*fd, UI_DEV_SETUP, &usetup)) {
         perror("failed to setup uinput device");
-        return 1;
+        return RET_ERROR;
     }
     if (ioctl(*fd, UI_DEV_CREATE)) {
         perror("failed to create uinput device");
-        return 1;
+        return RET_ERROR;
     }
-    return 0;
+    return RET_OKAY;
 }
 
 int virtual_gamepad_destroy(int fd) {
-    int result = 0;
+    int result = RET_OKAY;
     if (ioctl(fd, UI_DEV_DESTROY)) {
         perror("failed to destroy uinput device");
-        result = 1;
+        result = RET_ERROR;
     }
     if (close(fd)) {
         perror("failed to close uinput device");
-        result = 1;
+        result = RET_ERROR;
     }
     return result;
 }
@@ -130,29 +130,29 @@ int virtual_gamepad_destroy(int fd) {
 int virtual_gamepad_ff_upload(int fd, struct uinput_ff_upload* const event) {
     if (ioctl(fd, UI_BEGIN_FF_UPLOAD, event)) {
         perror("failed to upload uinput force-feedback event");
-        return 1;
+        return RET_ERROR;
     }
 
     event->retval = 0;
 
     if (ioctl(fd, UI_END_FF_UPLOAD, event)) {
         perror("failed to upload uinput force-feedback event");
-        return 1;
+        return RET_ERROR;
     }
-    return 0;
+    return RET_OKAY;
 }
 
 int virtual_gamepad_ff_erase(int fd, struct uinput_ff_erase* const event) {
     if (ioctl(fd, UI_BEGIN_FF_ERASE, event)) {
         perror("failed to erase uinput force-feedback event");
-        return 1;
+        return RET_ERROR;
     }
 
     event->retval = 0;
 
     if (ioctl(fd, UI_END_FF_ERASE, event)) {
         perror("failed to erase uinput force-feedback event");
-        return 1;
+        return RET_ERROR;
     }
-    return 0;
+    return RET_OKAY;
 }
