@@ -162,9 +162,12 @@ static int uinput_emit(
         .value = value,
     };
 
-    if (timeval_now(&event.time)) {
+    struct timeval tv;
+    if (timeval_now(&tv)) {
         return RET_ERROR;
     }
+    event.input_event_sec  = tv.tv_sec;
+    event.input_event_usec = tv.tv_usec;
     if (write(fd, &event, sizeof(event)) != sizeof(event)) {
         return RET_ERROR;
     }
@@ -178,9 +181,13 @@ static int uinput_sync(int fd) {
         .value = 0,
     };
 
-    if (timeval_now(&event.time)) {
+    struct timeval tv;
+    if (timeval_now(&tv)) {
         return RET_ERROR;
     }
+    event.input_event_sec  = tv.tv_sec;
+    event.input_event_usec = tv.tv_usec;
+
     if (write(fd, &event, sizeof(event)) != sizeof(event)) {
         return RET_ERROR;
     }

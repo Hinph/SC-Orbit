@@ -1,45 +1,83 @@
-CC = gcc
-CFLAGS = -Wall -pedantic
-LDFLAGS = -lm
+#
+# Compiler flags
+#
+CC      ?= gcc
+CFLAGS  += -Wall -pedantic -MMD
+LDFLAGS += -lm
 
+BUILD ?= debug
 ifdef RELEASE
-CFLAGS += -O2 -s
-else
-CFLAGS += -g -fno-omit-frame-pointer
+    ifeq ($(RELEASE),1)
+        BUILD = release
+    endif
 endif
 
-ifdef ASAN
-CFLAGS += -fsanitize=address
+ifdef STATIC
+    CFLAGS += -static
 endif
 
-ROOT_DIR = $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
-BIN_DIR = $(abspath $(ROOT_DIR)/bin)
-OBJ_DIR = $(abspath $(ROOT_DIR)/obj)
-SRC_DIR = $(abspath $(ROOT_DIR)/src)
+#
+# Debug build settings
+#
+ifeq ($(BUILD),debug)
+    CFLAGS += -g -fno-omit-frame-pointer
+    ifeq ($(ASAN),1)
+        CFLAGS += -fsanitize=address
+    endif
+endif
 
-OBJS = $(OBJ_DIR)/main.o \
-       $(OBJ_DIR)/gamepad.o \
-       $(OBJ_DIR)/gamepad_active.o \
-       $(OBJ_DIR)/sc_gamepad_state.o \
-       $(OBJ_DIR)/stopwatch.o \
-       $(OBJ_DIR)/triton.o \
-       $(OBJ_DIR)/utils.o \
-       $(OBJ_DIR)/virtual_gamepad.o \
-       $(OBJ_DIR)/virtual_mouse.o
+#
+# Release build settings
+#
+ifeq ($(BUILD),release)
+    CFLAGS += -O2 -s
+endif
 
-$(BINDIR)/scwrapper: $(OBJS) | $(BIN_DIR)
-	$(CC) $(CFLAGS) $(OBJS) $(LDFLAGS) -o bin/scwrapper
+#
+# Sources, Objects, and Dependencies
+#
+SRCS := $(wildcard src/*.c)
+OBJS := $(SRCS:src/%.c=obj/%.o)
+DEPS := $(OBJS:obj/%.o=obj/%.d)
 
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
-	$(CC) $(CFLAGS) -c "$<" -o "$@"
+#
+# Targets
+#
+bin/scwrapper: $(OBJS)
+	@mkdir -p bin
+	$(CC) $(CFLAGS) $(OBJS) $(LDFLAGS) -o $@
 
-$(BIN_DIR):
-	@mkdir -p "$(BIN_DIR)"
-
-$(OBJ_DIR):
-	@mkdir -p "$(OBJ_DIR)"
+obj/%.o: src/%.c
+	@mkdir -p obj
+	$(CC) $(CFLAGS) -c $< -o $@
 
 .PHONY: clean
 clean:
-	rm -rf "$(BIN_DIR)" "$(OBJ_DIR)" "$(ROOT_DIR)/mister.tar.gz"
+	rm -rf bin obj scwrapper.mister.tar.gz
 
+#
+# Docker Toolchains
+#
+.PHONY: toolchain-x86_64
+toolchain-x86_64:
+	docker build -f toolchains/Dockerfile.x86_64 -t $@ toolchains
+
+.PHONY: toolchain-arm7vl
+toolchain-arm7vl:
+	docker build -f toolchains/Dockerfile.armv7l -t $@ toolchains
+
+#
+# Static Release Builds
+#
+UID := $(shell id -u)
+GID := $(shell id -g)
+
+.PHONY: scwrapper.x86_64
+scwrapper.x86_64: toolchain-x86_64
+	docker run -it -v "${PWD}:/project" --user "$(UID):$(GID)" --rm toolchain-x86_64 bash -c 'cd /project && make STATIC=1 RELEASE=1'
+
+.PHONY: scwrapper.arm7vl
+scwrapper.arm7vl: toolchain-arm7vl
+	docker run -it -v "${PWD}:/project" --user "$(UID):$(GID)" --rm toolchain-arm7vl bash -c 'cd /project && make STATIC=1 RELEASE=1'
+
+-include $(DEPS)
