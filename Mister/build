@@ -1,32 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
-root="$(dirname -- "$(dirname -- "$(realpath -- "${BASH_SOURCE}")")")"
-
-uid="$(id -u)"
-gid="$(id -g)"
-
-read -r -d '' script <<'EOF' || true
-#/bin/bash
-set -euo pipefail
-
-pushd /project
-
 make clean
-make CC=arm-linux-gnueabihf-gcc RELEASE=1
+make scwrapper.arm7vl
 
-tmpdir="$(mktemp -d)"
-trap 'rm -rf ${tmpdir}' EXIT
-
-mkdir -p "${tmpdir}/etc/init.d/" \
-         "${tmpdir}/usr/bin"
-
-cp Mister/files/S99scwrapper "${tmpdir}/etc/init.d/"
-cp bin/scwrapper             "${tmpdir}/usr/bin/"
-
-tar -czvf mister.tar.gz -C "${tmpdir}" --owner=root --group=root .
-EOF
-
-docker build -f "${root}/Mister/Dockerfile.toolchain" -t toolchain:latest "${root}/Mister"
-
-docker run -v "${root}:/project" --user "${uid}:${gid}" --rm toolchain:latest bash -c "${script}"
+tar -rvf scwrapper.mister.tar --owner 0 --group 0 --mode 0755 --transform 's,.*,etc/init.d/S99scwrapper,' Mister/S99scwrapper
+tar -rvf scwrapper.mister.tar --owner 0 --group 0 --mode 0755 --transform 's,.*,usr/bin/scwrapper,'       bin/scwrapper
+gzip scwrapper.mister.tar

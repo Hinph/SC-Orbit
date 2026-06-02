@@ -2,6 +2,7 @@
 #define SCWRAPPER_VIRTUAL_GAMEPAD_H
 
 #include <linux/uinput.h>
+#include <string.h>
 
 int virtual_gamepad_setup(int* const fd);
 int virtual_gamepad_destroy(int fd);

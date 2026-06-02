@@ -11,12 +11,12 @@ SCWrapper is a Linux application that translates inputs from the 2026 version of
 - Supports:
   - x86_64 Linux
   - ARMv7L Linux (for the MisterFPGA)
+- Static Compilation with Musl
 
 ### Planned Features:
 - Gyro Support
 - Alternative Touchpad Configurations
 - Haptics Support (?)
-- Static Compilation with Musl
 
 ## MisterFPGA / MisterPi Installation Guide
 
@@ -43,6 +43,8 @@ db_url = https://raw.githubusercontent.com/bnpfeife/scwrapper/db/db.json.zip
 
 ## Build Guide
 ### For Desktop Linux:
+
+#### Local Development
 Dependencies:
 - gcc
 - make
@@ -54,13 +56,24 @@ Run this command within the project directory:
 $ make
 ```
 
-### For MisterFPGA:
+#### Release Build
 Dependencies:
 - docker
+- make
 
 Run this command within the project directory:
 ```
-$ Mister/build
+$ make scwrapper.x86_64
+```
+
+### For MisterFPGA:
+Dependencies:
+- docker
+- make
+
+Run this command within the project directory:
+```
+$ make scwrapper.arm7vl
 ```
 
 ## Contributing
