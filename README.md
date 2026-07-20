@@ -8,6 +8,9 @@ SC-Orbit features smooth trackball controls, multiple spinner styles, gyro aimin
 
 No keyboard required. No settings app to open. Hold the … button and adjust everything directly from the controller.
 
+<img width="1024" height="1536" alt="HotkeyGuide" src="https://github.com/user-attachments/assets/c7e3c483-c07d-4e0d-a420-24616252a3db" />
+
+
 ## What SC-Orbit Does
 
 ### Trackball
