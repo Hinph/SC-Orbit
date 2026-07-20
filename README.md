@@ -35,13 +35,12 @@ These can be used for games such as Arkanoid, Tempest, Championship Sprint, padd
 
 Spinner speed can be adjusted directly – Slide left and right across the pad.
 
-These can be used for games such as Arkanoid, Tempest, Championship from the controller.
 
 ### Gyro
 
 SC-Orbit includes touch-activated gyro controls.
 
-The gyro master can be turned on or off at any time. When it is off, all gyro functions are completely disabled.
+The gyro can be turned on or off at any time. When it is off, all gyro functions are completely disabled.
 
 Gyro can be used for:
 
@@ -56,7 +55,7 @@ Analog-stick gyro assistance is currently experimental. It is included because a
 
 ### Virtual Number Pad
 
-The spinner pad can also become an imaginary nine-button number pad
+The spinner pad can also become a simulated nine-button number pad
 
 Two layouts are included:
 
@@ -84,9 +83,9 @@ Hold the … button and use controller shortcuts to:
 - Save or load a profile
 - Restore defaults
 
-Each adjustment includes haptic feedback, and mode changes play short musical signatures through the Steam Controller’s haptic actuators.
+Each adjustment includes haptic feedback, and mode changes play sounda through the Steam Controller’s haptic actuators.
 
-The controller sings a little. That seemed more fun than ordinary confirmation beeps.
+The controller sings a little... chirps and purrs. Maybe we can get prettier sounds in future.
 
 I really didn’t want users to have to open up boring 80’s terminals to change settings, so while I know it’s a lot of shortcuts I believe in you...
 
@@ -96,7 +95,7 @@ I really didn’t want users to have to open up boring 80’s terminals to chang
 2. Copy it to the Scripts folder on your MiSTer SD card.
 3. Run it from MiSTer’s Scripts menu.
 4. Connect your Steam Controller.
-5. Play something.
+5. Map your buttons (ignore mouse controls)
 6. Keep in mind that every core handles inputs like mouse and spinner differently, so always check the core settings… Centipede, for example, seems to work best with the trackball scaling turned to 200%
 
 The installer includes everything SC-Orbit needs. It does not depend on a separate SC-Wrapper installation.
@@ -108,12 +107,6 @@ Your settings are stored inside:
 ```text
 /media/fat/linux/sc-orbit/
 ```
-
-## Basic Hotkeys
-
-Hold the … button while pressing the listed control.
-
-<img width="1024" height="1536" alt="SC-Orbit-Hotkey-Guide-Final-v2" src="https://github.com/user-attachments/assets/72dbc3cc-07eb-41fa-9349-7b486efdfd34" />
 
 ## Profiles
 
@@ -139,7 +132,7 @@ SC-Orbit is ready for general use, but I am absolutely open to improving it as p
 
 The main feature still considered experimental is:
 
-- Gyro assistance converted into analog-stick output
+- Gyro assistance converted into analog-stick output (this is tough)
 
 Regular mouse-style gyro, trackball, spinner, keypad, profiles, and controller hotkeys are part of the main feature set.
 
@@ -151,6 +144,6 @@ Huge credit goes to the SC-Wrapper project and its contributors for doing the di
 
 SC-Orbit became its own project after substantially expanding and reworking the controller behavior, input routing, trackball and spinner physics, gyro systems, haptics, profiles, installation process, and controller-first configuration.
 
-Also, thank you to Valve for making one of the strangest and most interesting controllers ever released.
+Also, thank you to Valve for making one of the strangest and most interesting controllers ever released. Combining this thing with MiSTer has been a lot of fun.
 
 And thanks to everybody who tests this, breaks it, reports something useful, or discovers a game that suddenly feels great with these controls!
