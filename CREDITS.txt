@@ -1,0 +1,13 @@
+SC-ORBIT CREDITS
+================
+
+SC-Orbit grew from the Steam Controller support pioneered by SC-Wrapper and its
+contributors. Their original implementation made this project possible.
+
+SC-Orbit substantially expands and rewrites the installer, targeted physical
+device takeover, virtual-device architecture, controller-first hotkeys, fluid
+trackball and spinner processing, gyro systems, number pad, profiles, and haptic
+feedback.
+
+Please preserve credit to SC-Wrapper and its contributors in redistributions or
+derivative work.
