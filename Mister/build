@@ -1,9 +1,0 @@
-#!/bin/bash
-set -euo pipefail
-
-make clean
-make scwrapper.arm7vl
-
-tar -rvf scwrapper.mister.tar --owner 0 --group 0 --mode 0755 --transform 's,.*,etc/init.d/S99scwrapper,' Mister/S99scwrapper
-tar -rvf scwrapper.mister.tar --owner 0 --group 0 --mode 0755 --transform 's,.*,usr/bin/scwrapper,'       bin/scwrapper
-gzip scwrapper.mister.tar
