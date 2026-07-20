@@ -73,9 +73,6 @@ Almost every important setting can be changed without leaving the game.
 
 Hold the … button and use controller shortcuts to:
 
-<img width="1024" height="1536" alt="SC-Orbit-Hotkey-Guide-Final-v2" src="https://github.com/user-attachments/assets/d9d3bd58-22bf-4de5-a488-802fbd82e673" />
-
-
 - Adjust trackball speed
 - Adjust spinner speed
 - Change friction and momentum
